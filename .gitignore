@@ -1,0 +1,8 @@
+# macOS
+.DS_Store
+
+# JetBrains IDE
+.idea/
+
+# Lokale previews en werkbestanden van Claude
+Claude outputs/

@@ -1,0 +1,30 @@
+name: PWA-controle
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Controleer verwijzingen in index.html, manifest en service worker
+        run: python scripts/check_pwa.py
+      - name: Waarschuw als VERSION in sw.js niet verhoogd werd
+        if: github.event_name == 'push'
+        run: |
+          if git diff --quiet HEAD~1 HEAD -- index.html manifest.webmanifest assets; then
+            echo "Geen app-bestanden gewijzigd."
+          elif git diff HEAD~1 HEAD -- sw.js | grep -q '^+const VERSION'; then
+            echo "VERSION werd verhoogd."
+          else
+            echo "::warning file=sw.js::App-bestanden gewijzigd maar VERSION in sw.js niet verhoogd."
+          fi

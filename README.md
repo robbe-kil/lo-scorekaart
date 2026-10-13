@@ -2,33 +2,37 @@
 
 Een app voor op de iPhone om leerlingen per LO-oefening te beoordelen. Je installeert ze als PWA vanaf GitHub Pages.
 
-## Online zetten op GitHub Pages
+## Mapstructuur
 
-1. Ga naar https://github.com/new
-   - Repository name: `lo-scorekaart`
-   - Kies **Public**
-   - Klik op **Create repository**
-2. Klik op **uploading an existing file**.
-3. Sleep de volledige inhoud van deze map in het venster: `index.html`, `manifest.webmanifest`, `sw.js`, `README.md` en de mappen `icons` en `vendor`.
-4. Klik op **Commit changes**.
-5. Ga naar **Settings → Pages**.
-   - Source: **Deploy from a branch**
-   - Branch: **main**, map: **/ (root)**
-   - Klik op **Save**
-6. Na ongeveer een minuut staat de app online op `https://<jouw-gebruikersnaam>.github.io/lo-scorekaart/`.
-
-Werk je liever met de Terminal op je Mac:
-
-```bash
-cd "~/Projects/Lichamelijke opvoeding/lo-scorekaart-pwa"
-git init -b main
-git add .
-git commit -m "LO Scorekaart PWA"
-git remote add origin https://github.com/<jouw-gebruikersnaam>/lo-scorekaart.git
-git push -u origin main
+```
+lo-scorekaart/
+├── index.html              # de app (moet in de root blijven)
+├── manifest.webmanifest    # PWA-instellingen (naam, kleuren, iconen)
+├── sw.js                   # service worker: offline werken (moet in de root blijven)
+├── .nojekyll               # GitHub Pages serveert alles zoals het is
+├── assets/
+│   ├── icons/              # app-iconen
+│   └── vendor/             # externe bibliotheken (jsPDF + licentie)
+├── docs/
+│   └── rubrieken/          # bronbeoordelingen per oefening (niet in de app geladen)
+│       └── koprol-voorwaarts.jpg
+├── scripts/
+│   └── check_pwa.py        # controleert dat alle bestanden van de PWA bestaan
+└── .github/workflows/
+    └── check-pwa.yml       # voert die controle uit bij elke push naar main
 ```
 
-Daarna schakel je Pages in zoals in stap 5.
+`index.html`, `manifest.webmanifest` en `sw.js` blijven in de root: GitHub Pages serveert de app vanaf de root van `main`, en een service worker kan alleen de map waarin hij staat (en alles daaronder) beheren.
+
+## Online (GitHub Pages)
+
+De app staat online op https://robbe-kil.github.io/lo-scorekaart/ en wordt gepubliceerd vanaf **Settings → Pages → Deploy from a branch → main → / (root)**. Elke push naar `main` zet de nieuwe versie automatisch online.
+
+Bij elke push naar `main` draait ook de workflow **PWA-controle** (tabblad *Actions*). Die faalt als `index.html`, `manifest.webmanifest` of `sw.js` verwijst naar een bestand dat niet bestaat, en geeft een waarschuwing als je app-bestanden wijzigde zonder `VERSION` in `sw.js` te verhogen. Je kan de controle ook lokaal draaien:
+
+```bash
+python3 scripts/check_pwa.py
+```
 
 ## Installeren op de iPhone
 
@@ -48,7 +52,8 @@ De app opent dan schermvullend en werkt ook zonder internet.
 ## Een nieuwe versie uitrollen
 
 1. Pas de bestanden aan.
-2. Verhoog `VERSION` in `sw.js`, bijvoorbeeld van `lo-scorekaart-v1` naar `lo-scorekaart-v2`.
-3. Upload of push de bestanden opnieuw.
+2. Voeg je een nieuw bestand toe dat de app nodig heeft (bv. een icoon), zet het dan ook in de `ASSETS`-lijst in `sw.js`.
+3. Verhoog `VERSION` in `sw.js`, bijvoorbeeld van `lo-scorekaart-v3` naar `lo-scorekaart-v4`.
+4. Push naar `main` en kijk in *Actions* of de PWA-controle groen is.
 
-De iPhone haalt de nieuwe versie op zodra je de app opent terwijl je internet hebt.
+De iPhone haalt de nieuwe versie op zodra je de app opent terwijl je internet hebt. Vergeet je `VERSION` eens, dan worden gewijzigde bestanden toch op de achtergrond ververst en zie je ze bij de volgende keer openen.
