@@ -83,6 +83,8 @@ python3 scripts/check_pwa.py
 
 De app opent dan schermvullend en werkt ook zonder internet.
 
+De app volgt de lichte of donkere modus van de iPhone. Onder **Oefeningen → Weergave** kan je ook vast *Licht* of *Donker* kiezen.
+
 ## Gegevens
 
 - Alles wordt als JSON bewaard op het toestel zelf (in `localStorage`). Er gaat niets naar een server.

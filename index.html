@@ -16,6 +16,7 @@
 <meta name="theme-color" content="#f2f2f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#000000" media="(prefers-color-scheme: dark)">
 <meta name="format-detection" content="telephone=no">
+<script>try{const t=JSON.parse(localStorage.getItem("lo-theme"));if(t==="light"||t==="dark")document.documentElement.dataset.theme=t}catch{}</script>
 <style>:root{color-scheme:light;padding-top:env(safe-area-inset-top,0px)}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 </head>
 <body>
@@ -24,7 +25,7 @@
 :root{
   --bg:#f2f2f7; --card:#ffffff; --sheet:#f2f2f7; --sheet-card:#ffffff;
   --fill:rgba(118,118,128,.12); --ink:#000000; --ink2:rgba(60,60,67,.62); --ink3:rgba(60,60,67,.32); --sep:rgba(60,60,67,.2);
-  --tint:#007aff; --tint-ink:#ffffff; --bar:rgba(249,249,249,.86);
+  --tint:#007aff; --tint-ink:#ffffff; --bar:rgba(249,249,249,.86); --seg-on:#ffffff;
   --l0:#28b14c; --l1:#00b3aa; --l2:#f08c00; --l3:#ff3b30;
   --font:-apple-system,BlinkMacSystemFont,"SF Pro Text","Helvetica Neue",system-ui,sans-serif;
   --font-d:-apple-system-headline,-apple-system,BlinkMacSystemFont,"SF Pro Display","Helvetica Neue",system-ui,sans-serif;
@@ -33,12 +34,12 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
   --bg:#000000; --card:#1c1c1e; --sheet:#1c1c1e; --sheet-card:#2c2c2e;
   --fill:rgba(118,118,128,.24); --ink:#ffffff; --ink2:rgba(235,235,245,.62); --ink3:rgba(235,235,245,.3); --sep:rgba(84,84,88,.65);
-  --tint:#0a84ff; --tint-ink:#ffffff; --bar:rgba(22,22,24,.82);
+  --tint:#0a84ff; --tint-ink:#ffffff; --bar:rgba(22,22,24,.82); --seg-on:#636366;
   --l0:#30d158; --l1:#40d9d0; --l2:#ff9f0a; --l3:#ff453a; color-scheme:dark}}
 :root[data-theme="dark"]{
   --bg:#000000; --card:#1c1c1e; --sheet:#1c1c1e; --sheet-card:#2c2c2e;
   --fill:rgba(118,118,128,.24); --ink:#ffffff; --ink2:rgba(235,235,245,.62); --ink3:rgba(235,235,245,.3); --sep:rgba(84,84,88,.65);
-  --tint:#0a84ff; --tint-ink:#ffffff; --bar:rgba(22,22,24,.82);
+  --tint:#0a84ff; --tint-ink:#ffffff; --bar:rgba(22,22,24,.82); --seg-on:#636366;
   --l0:#30d158; --l1:#40d9d0; --l2:#ff9f0a; --l3:#ff453a; color-scheme:dark}
 
 [hidden]{display:none!important}
@@ -120,7 +121,7 @@ button.cell:active{background:var(--fill)}
 /* segmented control */
 .segctl{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--fill);border-radius:9px;padding:2px;margin-top:8px}
 .segctl button{border-radius:7px;padding:6px 8px;font-size:14px;font-weight:500;text-align:center}
-.segctl button[aria-pressed="true"]{background:var(--card);box-shadow:0 2px 6px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04);font-weight:600}
+.segctl button[aria-pressed="true"]{background:var(--seg-on);box-shadow:0 2px 6px rgba(0,0,0,.12),0 0 0 .5px rgba(0,0,0,.04);font-weight:600}
 
 /* score bar */
 .scorebar{position:fixed;left:0;right:0;bottom:calc(var(--tabh) + env(safe-area-inset-bottom,0px));padding:8px 12px;z-index:30;pointer-events:none}
@@ -296,6 +297,15 @@ async function initStore(){
 /* ---------- ui state ---------- */
 const U = { tab:"eval", exId:ls.get("lo-ex",null), name:"", klas:ls.get("lo-klas",""), choices:{}, compact:ls.get("lo-compact",false),
   resEx:null, resMode:"ex", resSort:"name", editing:null };
+/* ---------- weergave: automatisch (volgt het toestel), licht of donker ---------- */
+function applyTheme(t){
+  const root = document.documentElement;
+  if (t==="light"||t==="dark") root.dataset.theme = t; else delete root.dataset.theme;
+  const [mLight, mDark] = document.querySelectorAll('meta[name="theme-color"]');
+  if (mLight && mDark) { mLight.content = t==="dark" ? "#000000" : "#f2f2f7"; mDark.content = t==="light" ? "#f2f2f7" : "#000000"; }
+}
+U.theme = ["light","dark"].includes(ls.get("lo-theme","auto")) ? ls.get("lo-theme") : "auto";
+applyTheme(U.theme);
 const exList = () => Object.entries(S.exercises).map(([id,e]) => ({id,...e})).sort((a,b)=>(a.createdAt||"").localeCompare(b.createdAt||"") || a.name.localeCompare(b.name));
 const curEx = () => { const l = exList(); const e = l.find(x=>x.id===U.exId) || l[0] || null; if (e) U.exId = e.id; return e; };
 const critMax = c => Math.max(...c.levels.map(l=>+l.points||0));
@@ -493,7 +503,12 @@ function renderEx(){
       <button class="cell ind" data-act="exportJson"><span class="icon-c">${ICON_DOC}</span><span class="row-t" style="flex:1">Exporteer JSON</span>${CHEV}</button>
       <button class="cell ind" data-act="importJson"><span class="icon-c" style="background:var(--l2)">${ICON_DOC}</span><span class="row-t" style="flex:1">Importeer JSON</span>${CHEV}</button>
     </div>
-    <div class="gf">Je gegevens staan enkel op dit toestel. Maak regelmatig een JSON-export als back-up. ${Object.keys(S.students).length} leerlingen · ${scores.length} scores.</div>`;
+    <div class="gf">Je gegevens staan enkel op dit toestel. Maak regelmatig een JSON-export als back-up. ${Object.keys(S.students).length} leerlingen · ${scores.length} scores.</div>
+    <div class="gh">Weergave</div>
+    <div class="segctl" role="group" aria-label="Weergave" style="margin-top:0">
+      ${[["auto","Automatisch"],["light","Licht"],["dark","Donker"]].map(([k,l])=>`<button data-act="theme" data-v="${k}" aria-pressed="${U.theme===k}">${l}</button>`).join("")}
+    </div>
+    <div class="gf">Automatisch volgt de instelling van je iPhone.</div>`;
 }
 function renderEditor(v){
   const e = U.editing;
@@ -702,6 +717,7 @@ document.addEventListener("click", async ev => {
         if (next) setTimeout(()=>document.getElementById("h_"+next.id)?.scrollIntoView({behavior:"smooth",block:"start"}),120);
       }
       break; }
+    case "theme": U.theme = t.dataset.v; ls.set("lo-theme", U.theme); applyTheme(U.theme); renderEx(); break;
     case "compact": U.compact = t.dataset.v==="1"; ls.set("lo-compact",U.compact); renderEval(); break;
     case "resetEval": U.choices={}; U.name=""; renderEval(); window.scrollTo({top:0,behavior:"smooth"}); break;
     case "goEval": closeSheet(); U.tab="eval"; U.exId=id; U.choices={}; ls.set("lo-ex",id); render(); window.scrollTo(0,0); break;
