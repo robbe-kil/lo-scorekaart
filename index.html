@@ -250,9 +250,9 @@ const CHEV = `<svg class="chev" viewBox="0 0 8 13" fill="none" stroke="currentCo
 const CHECK = `<svg class="chk" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m4 10.5 4 4 8-9"/></svg>`;
 const ICON_DOC = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11.5 2.5H6a2 2 0 0 0-2 2v11a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V7z"/><path d="M11.5 2.5V7H16M10 10v5M7.5 12.5 10 15l2.5-2.5"/></svg>`;
 
-/* ---------- store: shared db when available, otherwise this device ---------- */
+/* ---------- store: alles staat in localStorage op dit toestel ---------- */
 const S = { exercises:{}, students:{}, scores:{} };
-let db = null, mode = "loading", downloads = null;
+let mode = "loading", downloads = null;
 function loadLocal(){ const d = ls.get("lo-db", null); if (d) { for (const k of Object.keys(S)) S[k] = d[k] || {}; } }
 
 /* Ingebouwde oefeningen uit data/oefeningen.json (beheerd in de GitHub-repo).
@@ -284,18 +284,13 @@ async function syncBuiltins(){
   }
 }
 function saveLocal(){ ls.set("lo-db", S); }
-async function put(col, id, obj){ if (db) await db.collection(col).doc(id).set(obj); S[col][id] = obj; if (!db) saveLocal(); render(); }
-async function del(col, id){ if (db) await db.collection(col).doc(id).delete(); delete S[col][id]; if (!db) saveLocal(); render(); }
+async function put(col, id, obj){ S[col][id] = obj; saveLocal(); render(); }
+async function del(col, id){ delete S[col][id]; saveLocal(); render(); }
 async function initStore(){
   try { await navigator.storage?.persist?.(); } catch {}
-  if (db) {
-    mode = "cloud";
-    for (const col of Object.keys(S)) db.collection(col).onSnapshot(snap => {
-      const m = {}; snap.docs.forEach(d => { m[d.id] = d.data(); }); S[col] = m; render();
-    }, () => {});
-  } else { mode = "local"; loadLocal(); }
+  loadLocal(); mode = "local";
   render();
-  if (mode === "local") syncBuiltins();
+  syncBuiltins();
 }
 
 /* ---------- ui state ---------- */
@@ -322,8 +317,8 @@ function render(){
   $(`.tab[data-tab="${U.tab}"]`).setAttribute("aria-current","page");
   $("#v-eval").hidden = U.tab!=="eval"; $("#v-res").hidden = U.tab!=="res"; $("#v-ex").hidden = U.tab!=="ex";
   $("#scorebar").hidden = U.tab!=="eval";
-  const sy = $("#sync"); sy.classList.toggle("local", mode!=="cloud");
-  sy.querySelector("span").textContent = mode==="cloud" ? "Gesynchroniseerd op al je toestellen" : mode==="local" ? "Bewaard op dit toestel" : "Laden…";
+  const sy = $("#sync"); sy.classList.add("local");
+  sy.querySelector("span").textContent = mode==="local" ? "Bewaard op dit toestel" : "Laden…";
   sy.hidden = U.tab==="ex" && !!U.editing;
   if (U.tab==="eval") renderEval(); else if (U.tab==="res") renderRes(); else renderEx();
 }
@@ -498,7 +493,7 @@ function renderEx(){
       <button class="cell ind" data-act="exportJson"><span class="icon-c">${ICON_DOC}</span><span class="row-t" style="flex:1">Exporteer JSON</span>${CHEV}</button>
       <button class="cell ind" data-act="importJson"><span class="icon-c" style="background:var(--l2)">${ICON_DOC}</span><span class="row-t" style="flex:1">Importeer JSON</span>${CHEV}</button>
     </div>
-    <div class="gf">${mode==="cloud" ? "Alles wordt als JSON bewaard in de database van deze app." : "Je gegevens staan enkel op dit toestel. Maak regelmatig een JSON-export als back-up."} ${Object.keys(S.students).length} leerlingen · ${scores.length} scores.</div>`;
+    <div class="gf">Je gegevens staan enkel op dit toestel. Maak regelmatig een JSON-export als back-up. ${Object.keys(S.students).length} leerlingen · ${scores.length} scores.</div>`;
 }
 function renderEditor(v){
   const e = U.editing;

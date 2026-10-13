@@ -2,6 +2,44 @@
 
 Een app voor op de iPhone om leerlingen per LO-oefening te beoordelen. Je installeert ze als PWA vanaf GitHub Pages.
 
+## Architectuur
+
+```mermaid
+flowchart LR
+  subgraph mac["Mac (ontwikkeling)"]
+    repo["Git-repo lo-scorekaart<br/>index.html · sw.js · manifest<br/>data/oefeningen.json · assets/"]
+  end
+
+  subgraph gh["GitHub"]
+    main["Branch main"]
+    actions["Actions: PWA-controle<br/>scripts/check_pwa.py"]
+    pages["GitHub Pages<br/>robbe-kil.github.io/lo-scorekaart"]
+  end
+
+  subgraph phone["iPhone: Safari, op het beginscherm"]
+    sw["Service worker<br/>sw.js"]
+    cache[("Cache Storage<br/>app-bestanden + oefeningen")]
+    app["index.html<br/>scherm en logica"]
+    ls[("localStorage<br/>lo-db + instellingen")]
+  end
+
+  files["Bestanden / iCloud Drive<br/>JSON-back-up · CSV · PDF"]
+
+  repo -->|git push| main
+  main --> actions
+  main --> pages
+  pages -->|HTTPS, als er internet is| sw
+  sw <-->|offline kopie| cache
+  sw -->|bestanden| app
+  app <-->|lezen en schrijven| ls
+  app -->|exporteren of delen| files
+  files -->|JSON importeren| app
+```
+
+- De app is één statische pagina (`index.html`) zonder server. GitHub Pages levert alleen de bestanden.
+- De service worker bewaart de app in de cache van de iPhone, zodat ze ook zonder internet opent.
+- Alle oefeningen, leerlingen en scores staan in `localStorage` op het toestel. Back-ups en exports gaan via het deelmenu naar Bestanden of iCloud Drive.
+
 ## Mapstructuur
 
 ```
@@ -51,6 +89,34 @@ De app opent dan schermvullend en werkt ook zonder internet.
 - De gegevens worden niet gedeeld tussen je iPhone, je Mac of de versie in Claude.
 - Neem regelmatig een back-up via **Oefeningen → Exporteer JSON**. Na 14 dagen zonder back-up toont de app een herinnering (met *Later* schuif je die 3 dagen op). Met **Importeer JSON** zet je die terug, of breng je scores over van een ander toestel.
 - Wis je de websitegegevens van Safari of verwijder je de app van je beginscherm, dan verdwijnen ook de scores.
+
+## Ontwikkelworkflow
+
+```mermaid
+flowchart TD
+  start(["Wijziging nodig"]) --> soort{"Wat verandert er?"}
+
+  soort -->|nieuwe oefening| r1["Screenshot van de rubriek in<br/>docs/rubrieken/ (id.jpg)"]
+  r1 --> r2["Oefening toevoegen aan<br/>data/oefeningen.json"]
+
+  soort -->|de app zelf| a1["index.html, manifest<br/>of assets/ aanpassen"]
+  a1 --> a2["VERSION in sw.js verhogen,<br/>nieuwe bestanden in ASSETS"]
+  a2 --> test["Testen in de browser op 390 px,<br/>zonder fouten in de console"]
+
+  r2 --> check["python3 scripts/check_pwa.py"]
+  test --> check
+  check -->|faalt| fix["Fout oplossen"]
+  fix --> check
+  check -->|ok| push["Commit en push naar main"]
+
+  push --> ci["GitHub Actions:<br/>PWA-controle"]
+  push --> pages["GitHub Pages zet<br/>de nieuwe versie online"]
+  pages --> open["iPhone: app openen met internet"]
+  open --> p1["syncBuiltins() voegt nieuwe<br/>oefeningen toe of werkt ze bij"]
+  open --> p2["Service worker installeert de<br/>nieuwe VERSION, oude cache weg"]
+```
+
+De stappen staan uitgewerkt in *Nieuwe oefeningen toevoegen* en *Een nieuwe versie uitrollen* hieronder.
 
 ## Nieuwe oefeningen toevoegen
 
