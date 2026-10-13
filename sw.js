@@ -1,6 +1,6 @@
 // Service worker: bewaart de app offline.
 // Verhoog VERSION bij elke release; de check-workflow op GitHub controleert dat elk bestand in ASSETS bestaat.
-const VERSION = "lo-scorekaart-v4";
+const VERSION = "lo-scorekaart-v5";
 const ASSETS = [
   "./",
   "index.html",

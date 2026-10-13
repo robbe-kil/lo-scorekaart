@@ -6,6 +6,7 @@ Een app voor op de iPhone om leerlingen per LO-oefening te beoordelen. Je instal
 
 ```
 lo-scorekaart/
+├── CLAUDE.md               # afspraken voor Claude (Cowork) bij wijzigingen
 ├── index.html              # de app (moet in de root blijven)
 ├── manifest.webmanifest    # PWA-instellingen (naam, kleuren, iconen)
 ├── sw.js                   # service worker: offline werken (moet in de root blijven)
@@ -48,7 +49,7 @@ De app opent dan schermvullend en werkt ook zonder internet.
 
 - Alles wordt als JSON bewaard op het toestel zelf (in `localStorage`). Er gaat niets naar een server.
 - De gegevens worden niet gedeeld tussen je iPhone, je Mac of de versie in Claude.
-- Neem regelmatig een back-up via **Oefeningen → Exporteer JSON**. Met **Importeer JSON** zet je die terug, of breng je scores over van een ander toestel.
+- Neem regelmatig een back-up via **Oefeningen → Exporteer JSON**. Na 14 dagen zonder back-up toont de app een herinnering (met *Later* schuif je die 3 dagen op). Met **Importeer JSON** zet je die terug, of breng je scores over van een ander toestel.
 - Wis je de websitegegevens van Safari of verwijder je de app van je beginscherm, dan verdwijnen ook de scores.
 
 ## Nieuwe oefeningen toevoegen

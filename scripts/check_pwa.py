@@ -9,7 +9,7 @@ errors = []
 
 def check(path, origin):
     p = path.split("?")[0].split("#")[0]
-    if not p or p in ("./", "/") or re.match(r"^(https?:|data:|mailto:)", p):
+    if not p or p in ("./", "/") or "${" in p or re.match(r"^(https?:|data:|mailto:)", p):
         return
     if not (root / p).is_file():
         errors.append(f"{origin}: '{path}' bestaat niet")

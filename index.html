@@ -91,6 +91,9 @@ button.cell:active{background:var(--fill)}
 .sugg button{flex:none;background:var(--fill);border-radius:999px;padding:7px 13px;font-size:15px}
 .notice{display:flex;gap:10px;align-items:flex-start;font-size:15px;color:var(--ink)}
 .notice svg{color:var(--l2);flex:none;margin-top:1px}
+.backup{padding:14px 16px;display:flex;flex-direction:column;gap:12px}
+.backup .acts{display:flex;gap:8px}.backup .acts .btn{flex:1;padding:10px 14px;font-size:15px}
+.rubriek-img{display:block;width:100%;height:auto;border-radius:10px;background:var(--sheet-card)}
 
 /* criteria options */
 .opt{--c:var(--l0)}
@@ -257,7 +260,7 @@ function loadLocal(){ const d = ls.get("lo-db", null); if (d) { for (const k of 
    - ingebouwde oefening die hier niet bewerkt werd: wordt bijgewerkt als het bestand nieuwer is
    - zelf bewerkte oefening (zonder 'builtin'): blijft ongemoeid
    - zelf verwijderde ingebouwde oefening (lijst 'lo-removed'): komt niet terug */
-const BUILTIN = new Set();
+const BUILTIN = new Set(), RUBRIEK = {};
 async function syncBuiltins(){
   let data;
   try { const r = await fetch("data/oefeningen.json", {cache:"no-cache"}); if (!r.ok) return; data = await r.json(); } catch { return; }
@@ -265,10 +268,10 @@ async function syncBuiltins(){
   let added = 0, updated = 0;
   for (const [id, j] of Object.entries(data || {})) {
     if (!j || !j.name || !Array.isArray(j.criteria)) continue;
-    BUILTIN.add(id);
+    BUILTIN.add(id); if (j.rubriek) RUBRIEK[id] = j.rubriek;
     if (removed.has(id)) continue;
     const stampB = j.updatedAt || j.createdAt || "1", local = S.exercises[id];
-    const copy = { name:j.name, criteria:JSON.parse(JSON.stringify(j.criteria)), createdAt:j.createdAt || new Date().toISOString(), builtin:stampB };
+    const copy = { name:j.name, criteria:JSON.parse(JSON.stringify(j.criteria)), createdAt:j.createdAt || new Date().toISOString(), builtin:stampB, ...(j.rubriek ? {rubriek:j.rubriek} : {}) };
     if (!local) { S.exercises[id] = copy; added++; }
     else if (local.builtin ? local.builtin < stampB : !local.updatedAt) {
       if (local.builtin || JSON.stringify(local.criteria) !== JSON.stringify(j.criteria) || local.name !== j.name) updated++;
@@ -304,6 +307,7 @@ const critMax = c => Math.max(...c.levels.map(l=>+l.points||0));
 const maxOf = ex => ex.criteria.reduce((s,c)=>s+critMax(c),0);
 const findStudent = name => { const n = name.trim().toLowerCase(); return n ? Object.entries(S.students).find(([,s]) => s.name.trim().toLowerCase() === n) : null; };
 const scoreId = (sid, eid) => sid + "__" + eid;
+const rubriekOf = id => S.exercises[id]?.rubriek || RUBRIEK[id] || null;
 const scoreList = () => Object.entries(S.scores).map(([id,s])=>({id,...s}));
 
 /* ---------- chrome ---------- */
@@ -324,6 +328,19 @@ function render(){
   if (U.tab==="eval") renderEval(); else if (U.tab==="res") renderRes(); else renderEx();
 }
 
+/* ---------- back-upherinnering ---------- */
+const BACKUP_DAYS = 14, DAY = 864e5;
+if (!ls.get("lo-since", null)) ls.set("lo-since", Date.now());
+function backupBanner(){
+  const n = Object.keys(S.scores).length; if (!n || mode !== "local") return "";
+  const last = ls.get("lo-backup", null), ref = Math.max(last || ls.get("lo-since", Date.now()), ls.get("lo-snooze", 0));
+  if (Date.now() - ref < BACKUP_DAYS * DAY) return "";
+  const days = last ? Math.floor((Date.now() - last) / DAY) : null;
+  return `<div class="gap"></div><div class="group backup"><div class="notice"><svg width="20" height="20" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="10" cy="10" r="8"/><path d="M10 6v5M10 14v.01"/></svg>
+    <span>${days == null ? "Je hebt nog geen back-up gemaakt." : `Je laatste back-up is ${days} dagen oud.`} ${n===1?"Je score staat":`Je ${n} scores staan`} alleen op dit toestel. Bewaar een back-up in Bestanden of iCloud Drive.</span></div>
+    <div class="acts"><button class="btn" data-act="exportJson">Maak back-up</button><button class="btn plain" style="background:var(--sheet-card)" data-act="snoozeBackup">Later</button></div></div>`;
+}
+
 /* ---------- beoordelen ---------- */
 function renderEval(){
   const v = $("#v-eval"); const ex = curEx();
@@ -335,7 +352,7 @@ function renderEval(){
     updateScore(); return;
   }
   const keepFocus = document.activeElement?.id;
-  v.innerHTML = `
+  v.innerHTML = `${backupBanner()}
     <div class="gh">Oefening</div>
     <div class="group"><button class="cell" data-act="pickExSheet"><span style="font-weight:600">${esc(ex.name)}</span><span class="val">${ex.criteria.length} criteria</span>${CHEV}</button></div>
     <div class="gh">Leerling</div>
@@ -468,7 +485,7 @@ function renderEx(){
   if (U.editing) { renderEditor(v); return; }
   setNav("Oefeningen", null, {html:`<svg width="22" height="22" viewBox="0 0 22 22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M11 4v14M4 11h14"/></svg>`, act:"newEx"});
   const exs = exList(), scores = Object.values(S.scores);
-  v.innerHTML = `
+  v.innerHTML = `${backupBanner()}
     <div class="gh">${exs.length} oefening${exs.length===1?"":"en"}</div>
     ${exs.length ? `<div class="group">${exs.map(e=>{ const n = scores.filter(s=>s.exerciseId===e.id).length;
       return `<button class="cell" data-act="exSheet" data-id="${e.id}"><span class="row-m"><span class="row-t">${esc(e.name)}</span><span class="row-s">${e.criteria.length} criteria · max. ${fmt(maxOf(e))} p. · ${n} beoordeeld</span></span>${CHEV}</button>`;}).join("")}</div>`
@@ -548,7 +565,7 @@ function csv(){
 }
 function exportJson(){
   const txt = JSON.stringify({ app:"LO Scorekaart", version:1, exportedAt:new Date().toISOString(), ...S }, null, 2);
-  { offerFile(`lo-beoordelingen-${stamp()}.json`, txt, "JSON bewaard"); return; }
+  { offerFile(`lo-beoordelingen-${stamp()}.json`, txt, "Back-up bewaard").then(ok => { if (ok) { ls.set("lo-backup", Date.now()); render(); } }); return; }
   openSheet(`<div class="sheet-h"><div><h2>JSON-export</h2><p>Kopieer en bewaar deze tekst.</p></div></div><textarea class="json-out" id="jsonOut" readonly>${esc(txt)}</textarea><div class="gap"></div><button class="btn wide" data-act="copyJson">Kopieer</button>`);
 }
 async function importJson(file){
@@ -701,7 +718,7 @@ document.addEventListener("click", async ev => {
     case "editScore": { const s=S.scores[id]; if(!s) break; closeSheet(); U.tab="eval"; U.exId=s.exerciseId; U.name=S.students[s.studentId]?.name||s.studentName; U.klas=s.klas||U.klas; U.choices={...(s.choices||{})}; render(); window.scrollTo(0,0); break; }
     case "exSheet": { const e=S.exercises[id]; if(!e) break; const n=Object.values(S.scores).filter(s=>s.exerciseId===id).length;
       openSheet(`<div class="sheet-h"><div><h2>${esc(e.name)}</h2><p>${e.criteria.length} criteria · max. ${fmt(maxOf(e))} p. · ${n} beoordeeld</p></div></div>
-        <div class="group"><button class="cell tintc" data-act="goEval" data-id="${id}">Beoordeel leerlingen</button><button class="cell tintc" data-act="editEx" data-id="${id}">Bewerk criteria</button>
+        <div class="group"><button class="cell tintc" data-act="goEval" data-id="${id}">Beoordeel leerlingen</button>${rubriekOf(id) ? `<button class="cell tintc" data-act="showRubriek" data-id="${id}">Bekijk rubriek</button>` : ""}<button class="cell tintc" data-act="editEx" data-id="${id}">Bewerk criteria</button>
         <button class="cell dangerc" data-act="askDelEx" data-id="${id}">Verwijder oefening</button></div>
         <div class="gap"></div><button class="btn plain wide" style="background:var(--sheet-card)" data-act="closeSheet">Sluit</button>`); break; }
     case "askDelEx": { const n=Object.values(S.scores).filter(s=>s.exerciseId===id).length; confirmSheet("Oefening verwijderen?", n?`Ook ${n} score${n===1?"":"s"} worden verwijderd.`:"Er zijn nog geen scores.", "Verwijder oefening", "delEx", id); break; }
@@ -727,6 +744,11 @@ document.addEventListener("click", async ev => {
     case "importJson": $("#importFile").click(); break;
     case "copyJson": { const ta=$("#jsonOut"); try{ await navigator.clipboard.writeText(ta.value); toast("Gekopieerd"); }catch{ ta.focus(); ta.select(); } break; }
     case "closeSheet": closeSheet(); break;
+    case "snoozeBackup": ls.set("lo-snooze", Date.now() - (BACKUP_DAYS - 3) * DAY); render(); break;
+    case "showRubriek": { const e=S.exercises[id], src=rubriekOf(id); if (!e || !src) break;
+      openSheet(`<div class="sheet-h"><div><h2>${esc(e.name)}</h2><p>Originele rubriek · tik om te vergroten</p></div></div>
+        <a href="${esc(src)}" target="_blank" rel="noopener"><img class="rubriek-img" src="${esc(src)}" alt="Rubriek ${esc(e.name)}" onerror="this.replaceWith(Object.assign(document.createElement('p'),{textContent:'De rubriek kon niet geladen worden. Open de app eens met internet.'}))"></a>
+        <div class="gap"></div><button class="btn plain wide" style="background:var(--sheet-card)" data-act="closeSheet">Sluit</button>`); break; }
   }
 });
 $("#sheetBd").addEventListener("click", closeSheet);
