@@ -10,11 +10,13 @@ lo-scorekaart/
 ├── manifest.webmanifest    # PWA-instellingen (naam, kleuren, iconen)
 ├── sw.js                   # service worker: offline werken (moet in de root blijven)
 ├── .nojekyll               # GitHub Pages serveert alles zoals het is
+├── data/
+│   └── oefeningen.json     # de ingebouwde oefeningen (criteria en niveaus)
 ├── assets/
 │   ├── icons/              # app-iconen
 │   └── vendor/             # externe bibliotheken (jsPDF + licentie)
 ├── docs/
-│   └── rubrieken/          # bronbeoordelingen per oefening (niet in de app geladen)
+│   └── rubrieken/          # screenshots van de beoordelingsrubrieken (bron voor oefeningen.json)
 │       └── koprol-voorwaarts.jpg
 ├── scripts/
 │   └── check_pwa.py        # controleert dat alle bestanden van de PWA bestaan
@@ -48,6 +50,23 @@ De app opent dan schermvullend en werkt ook zonder internet.
 - De gegevens worden niet gedeeld tussen je iPhone, je Mac of de versie in Claude.
 - Neem regelmatig een back-up via **Oefeningen → Exporteer JSON**. Met **Importeer JSON** zet je die terug, of breng je scores over van een ander toestel.
 - Wis je de websitegegevens van Safari of verwijder je de app van je beginscherm, dan verdwijnen ook de scores.
+
+## Nieuwe oefeningen toevoegen
+
+De oefeningen staan in `data/oefeningen.json`, met als sleutel een id zoals `koprol-voorwaarts`. Bij elke start met internet haalt de app dat bestand op:
+
+- een oefening die nog niet op het toestel staat, wordt toegevoegd;
+- een ingebouwde oefening die op het toestel niet bewerkt werd, wordt bijgewerkt als `updatedAt` in het bestand nieuwer is;
+- een oefening die op het toestel bewerkt werd, blijft ongemoeid;
+- een ingebouwde oefening die op het toestel verwijderd werd, komt niet terug.
+
+Werkwijze:
+
+1. Zet de screenshots van de rubrieken in `docs/rubrieken/` (naam: `<id>.jpg`, bv. `koprol-achterwaarts.jpg`).
+2. Voeg per screenshot een oefening toe aan `data/oefeningen.json`: `name`, `rubriek`, `createdAt`, `updatedAt` en `criteria` met telkens 4 niveaus (Uitstekend, Goed, Voldoende, Onvoldoende) met `points` en `desc`.
+3. Draai `python3 scripts/check_pwa.py` en push naar `main`.
+
+Voor een wijziging aan `data/oefeningen.json` hoef je `VERSION` in `sw.js` niet te verhogen: de app haalt dat bestand altijd eerst van het netwerk.
 
 ## Een nieuwe versie uitrollen
 

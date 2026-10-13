@@ -1,0 +1,120 @@
+{
+  "koprol-voorwaarts": {
+    "name": "Koprol voorwaarts",
+    "rubriek": "docs/rubrieken/koprol-voorwaarts.jpg",
+    "createdAt": "2026-10-12T12:00:00.000Z",
+    "updatedAt": "2026-10-12T12:00:00.000Z",
+    "criteria": [
+      {
+        "id": "c1",
+        "name": "Startpositie",
+        "levels": [
+          {
+            "points": 2,
+            "desc": "Start gehurkt, voeten samen, armen voorwaarts gestrekt"
+          },
+          {
+            "points": 1.5,
+            "desc": "Startpositie bijna volledig correct"
+          },
+          {
+            "points": 1,
+            "desc": "Meerdere aandachtspunten"
+          },
+          {
+            "points": 0,
+            "desc": "Startpositie niet correct"
+          }
+        ]
+      },
+      {
+        "id": "c2",
+        "name": "Handplaatsing",
+        "levels": [
+          {
+            "points": 2,
+            "desc": "Plaatst beide handen op schouderbreedte, vingers wijzen voorwaarts"
+          },
+          {
+            "points": 1.5,
+            "desc": "Handen bijna correct geplaatst"
+          },
+          {
+            "points": 1,
+            "desc": "Handen staan niet optimaal"
+          },
+          {
+            "points": 0,
+            "desc": "Plaatst handen verkeerd of niet op de mat"
+          }
+        ]
+      },
+      {
+        "id": "c3",
+        "name": "Uitvoering van de rol",
+        "levels": [
+          {
+            "points": 2,
+            "desc": "Kin op de borst, hoofd ingetrokken, rolt over de schouders en bovenrug"
+          },
+          {
+            "points": 1.5,
+            "desc": "Uitvoering grotendeels correct"
+          },
+          {
+            "points": 1,
+            "desc": "Rolt onzeker of maakt onvoldoende bol"
+          },
+          {
+            "points": 0,
+            "desc": "Rolt niet veilig of correct"
+          }
+        ]
+      },
+      {
+        "id": "c4",
+        "name": "Opkomen uit de rol",
+        "levels": [
+          {
+            "points": 2,
+            "desc": "Houdt knieën en voeten samen en brengt de hielen naar het zitvlak"
+          },
+          {
+            "points": 1.5,
+            "desc": "Komt bijna zelfstandig en gecontroleerd recht"
+          },
+          {
+            "points": 1,
+            "desc": "Heeft moeite om recht te komen"
+          },
+          {
+            "points": 0,
+            "desc": "Kan niet zelfstandig rechtkomen"
+          }
+        ]
+      },
+      {
+        "id": "c5",
+        "name": "Eindpositie en controle",
+        "levels": [
+          {
+            "points": 2,
+            "desc": "Komt gecontroleerd in hurkzit, voeten samen, zonder handensteun"
+          },
+          {
+            "points": 1.5,
+            "desc": "Komt recht met een klein evenwichtsverlies"
+          },
+          {
+            "points": 1,
+            "desc": "Heeft extra handensteun nodig"
+          },
+          {
+            "points": 0,
+            "desc": "Kan niet zelfstandig tot hurkzit komen"
+          }
+        ]
+      }
+    ]
+  }
+}

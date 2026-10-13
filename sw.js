@@ -1,10 +1,11 @@
 // Service worker: bewaart de app offline.
 // Verhoog VERSION bij elke release; de check-workflow op GitHub controleert dat elk bestand in ASSETS bestaat.
-const VERSION = "lo-scorekaart-v3";
+const VERSION = "lo-scorekaart-v4";
 const ASSETS = [
   "./",
   "index.html",
   "manifest.webmanifest",
+  "data/oefeningen.json",
   "assets/vendor/jspdf.umd.min.js",
   "assets/icons/apple-touch-icon.png",
   "assets/icons/icon-192.png",
@@ -33,6 +34,14 @@ self.addEventListener("fetch", e => {
     e.respondWith(fetch(e.request)
       .then(r => { const c = r.clone(); caches.open(VERSION).then(x => x.put("index.html", c)); return r; })
       .catch(() => caches.match("index.html")));
+    return;
+  }
+
+  // Oefeningen: eerst netwerk, zodat nieuwe oefeningen meteen binnenkomen; offline de bewaarde kopie.
+  if (url.pathname.endsWith("/data/oefeningen.json")) {
+    e.respondWith(fetch(e.request)
+      .then(r => { if (r.ok) { const c = r.clone(); caches.open(VERSION).then(x => x.put("data/oefeningen.json", c)); } return r; })
+      .catch(() => caches.match("data/oefeningen.json")));
     return;
   }
 

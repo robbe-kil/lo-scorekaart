@@ -250,8 +250,36 @@ const ICON_DOC = `<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" str
 /* ---------- store: shared db when available, otherwise this device ---------- */
 const S = { exercises:{}, students:{}, scores:{} };
 let db = null, mode = "loading", downloads = null;
-const STARTER = {"koprol-voorwaarts": {"name": "Koprol voorwaarts", "createdAt": "2026-10-12T12:00:00.000Z", "criteria": [{"id": "c1", "name": "Startpositie", "levels": [{"points": 2, "desc": "Start gehurkt, voeten samen, armen voorwaarts gestrekt"}, {"points": 1.5, "desc": "Startpositie bijna volledig correct"}, {"points": 1, "desc": "Meerdere aandachtspunten"}, {"points": 0, "desc": "Startpositie niet correct"}]}, {"id": "c2", "name": "Handplaatsing", "levels": [{"points": 2, "desc": "Plaatst beide handen op schouderbreedte, vingers wijzen voorwaarts"}, {"points": 1.5, "desc": "Handen bijna correct geplaatst"}, {"points": 1, "desc": "Handen staan niet optimaal"}, {"points": 0, "desc": "Plaatst handen verkeerd of niet op de mat"}]}, {"id": "c3", "name": "Uitvoering van de rol", "levels": [{"points": 2, "desc": "Kin op de borst, hoofd ingetrokken, rolt over de schouders en bovenrug"}, {"points": 1.5, "desc": "Uitvoering grotendeels correct"}, {"points": 1, "desc": "Rolt onzeker of maakt onvoldoende bol"}, {"points": 0, "desc": "Rolt niet veilig of correct"}]}, {"id": "c4", "name": "Opkomen uit de rol", "levels": [{"points": 2, "desc": "Houdt knieën en voeten samen en brengt de hielen naar het zitvlak"}, {"points": 1.5, "desc": "Komt bijna zelfstandig en gecontroleerd recht"}, {"points": 1, "desc": "Heeft moeite om recht te komen"}, {"points": 0, "desc": "Kan niet zelfstandig rechtkomen"}]}, {"id": "c5", "name": "Eindpositie en controle", "levels": [{"points": 2, "desc": "Komt gecontroleerd in hurkzit, voeten samen, zonder handensteun"}, {"points": 1.5, "desc": "Komt recht met een klein evenwichtsverlies"}, {"points": 1, "desc": "Heeft extra handensteun nodig"}, {"points": 0, "desc": "Kan niet zelfstandig tot hurkzit komen"}]}]}};
-function loadLocal(){ const d = ls.get("lo-db", null); if (d) { for (const k of Object.keys(S)) S[k] = d[k] || {}; } else { S.exercises = JSON.parse(JSON.stringify(STARTER)); saveLocal(); } }
+function loadLocal(){ const d = ls.get("lo-db", null); if (d) { for (const k of Object.keys(S)) S[k] = d[k] || {}; } }
+
+/* Ingebouwde oefeningen uit data/oefeningen.json (beheerd in de GitHub-repo).
+   - nieuwe oefening: wordt toegevoegd
+   - ingebouwde oefening die hier niet bewerkt werd: wordt bijgewerkt als het bestand nieuwer is
+   - zelf bewerkte oefening (zonder 'builtin'): blijft ongemoeid
+   - zelf verwijderde ingebouwde oefening (lijst 'lo-removed'): komt niet terug */
+const BUILTIN = new Set();
+async function syncBuiltins(){
+  let data;
+  try { const r = await fetch("data/oefeningen.json", {cache:"no-cache"}); if (!r.ok) return; data = await r.json(); } catch { return; }
+  const removed = new Set(ls.get("lo-removed", []));
+  let added = 0, updated = 0;
+  for (const [id, j] of Object.entries(data || {})) {
+    if (!j || !j.name || !Array.isArray(j.criteria)) continue;
+    BUILTIN.add(id);
+    if (removed.has(id)) continue;
+    const stampB = j.updatedAt || j.createdAt || "1", local = S.exercises[id];
+    const copy = { name:j.name, criteria:JSON.parse(JSON.stringify(j.criteria)), createdAt:j.createdAt || new Date().toISOString(), builtin:stampB };
+    if (!local) { S.exercises[id] = copy; added++; }
+    else if (local.builtin ? local.builtin < stampB : !local.updatedAt) {
+      if (local.builtin || JSON.stringify(local.criteria) !== JSON.stringify(j.criteria) || local.name !== j.name) updated++;
+      S.exercises[id] = copy;
+    }
+  }
+  if (added || updated) {
+    saveLocal(); render();
+    toast(added ? `${added} nieuwe oefening${added===1?"":"en"} toegevoegd` : `${updated} oefening${updated===1?"":"en"} bijgewerkt`);
+  }
+}
 function saveLocal(){ ls.set("lo-db", S); }
 async function put(col, id, obj){ if (db) await db.collection(col).doc(id).set(obj); S[col][id] = obj; if (!db) saveLocal(); render(); }
 async function del(col, id){ if (db) await db.collection(col).doc(id).delete(); delete S[col][id]; if (!db) saveLocal(); render(); }
@@ -264,6 +292,7 @@ async function initStore(){
     }, () => {});
   } else { mode = "local"; loadLocal(); }
   render();
+  if (mode === "local") syncBuiltins();
 }
 
 /* ---------- ui state ---------- */
@@ -676,7 +705,7 @@ document.addEventListener("click", async ev => {
         <button class="cell dangerc" data-act="askDelEx" data-id="${id}">Verwijder oefening</button></div>
         <div class="gap"></div><button class="btn plain wide" style="background:var(--sheet-card)" data-act="closeSheet">Sluit</button>`); break; }
     case "askDelEx": { const n=Object.values(S.scores).filter(s=>s.exerciseId===id).length; confirmSheet("Oefening verwijderen?", n?`Ook ${n} score${n===1?"":"s"} worden verwijderd.`:"Er zijn nog geen scores.", "Verwijder oefening", "delEx", id); break; }
-    case "delEx": closeSheet(); for (const [sid,s] of Object.entries(S.scores)) if (s.exerciseId===id) await del("scores",sid); await del("exercises",id); toast("Oefening verwijderd"); break;
+    case "delEx": closeSheet(); for (const [sid,s] of Object.entries(S.scores)) if (s.exerciseId===id) await del("scores",sid); if (BUILTIN.has(id) || S.exercises[id]?.builtin) { const rm=new Set(ls.get("lo-removed",[])); rm.add(id); ls.set("lo-removed",[...rm]); } await del("exercises",id); toast("Oefening verwijderd"); break;
     case "newEx": closeSheet(); U.tab="ex"; U.editing={id:null,name:"",criteria:[blankCrit(0)]}; render(); window.scrollTo(0,0); break;
     case "editEx": closeSheet(); U.tab="ex"; U.editing=JSON.parse(JSON.stringify({id,...S.exercises[id]})); render(); window.scrollTo(0,0); break;
     case "addCrit": U.editing.criteria.push(blankCrit(U.editing.criteria.length)); render(); setTimeout(()=>$("#cn"+(U.editing.criteria.length-1))?.focus(),50); break;

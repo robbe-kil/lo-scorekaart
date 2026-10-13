@@ -32,6 +32,44 @@ else:
 if not re.search(r'const VERSION\s*=\s*"[^"]+"', sw):
     errors.append("sw.js: VERSION niet gevonden")
 
+# data/oefeningen.json: geldige oefeningen met criteria en niveaus
+ex_path = root / "data" / "oefeningen.json"
+if not ex_path.is_file():
+    errors.append("data/oefeningen.json bestaat niet")
+else:
+    try:
+        exs = json.loads(ex_path.read_text(encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        exs = {}
+        errors.append(f"data/oefeningen.json: geen geldige JSON ({e})")
+    if not isinstance(exs, dict):
+        errors.append("data/oefeningen.json: verwacht een object {id: oefening}")
+        exs = {}
+    for ex_id, ex in exs.items():
+        where = f"data/oefeningen.json › {ex_id}"
+        if not re.fullmatch(r"[a-z0-9-]+", ex_id):
+            errors.append(f"{where}: id mag enkel kleine letters, cijfers en '-' bevatten")
+        if not isinstance(ex, dict) or not str(ex.get("name", "")).strip():
+            errors.append(f"{where}: 'name' ontbreekt"); continue
+        if ex.get("rubriek"):
+            check(ex["rubriek"], where)
+        crits = ex.get("criteria")
+        if not isinstance(crits, list) or not crits:
+            errors.append(f"{where}: geen criteria"); continue
+        ids = [c.get("id") for c in crits if isinstance(c, dict)]
+        if len(set(ids)) != len(crits):
+            errors.append(f"{where}: criterium-id's ontbreken of zijn dubbel")
+        for c in crits:
+            lv = c.get("levels") if isinstance(c, dict) else None
+            if not isinstance(lv, list) or len(lv) != 4:
+                errors.append(f"{where} › {c.get('name') if isinstance(c, dict) else c}: verwacht 4 niveaus"); continue
+            for l in lv:
+                if not isinstance(l.get("points"), (int, float)) or not str(l.get("desc", "")).strip():
+                    errors.append(f"{where} › {c.get('name')}: elk niveau heeft 'points' (getal) en 'desc' nodig")
+                    break
+    if exs:
+        print(f"{len(exs)} oefening(en) in data/oefeningen.json gecontroleerd.")
+
 if errors:
     print("PWA-controle mislukt:")
     for e in errors:
